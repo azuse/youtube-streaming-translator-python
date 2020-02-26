@@ -26,7 +26,7 @@ import pyaudio
 ###################################################################################################
 # my code
 ###################################################################################################
-compelet_history = [0] * 3600 * 100
+complete_history = [0] * 3600 * 100
 # multi-thread download stream video
 class download_thread (threading.Thread):
     def __init__(self, url:str, index:int):
@@ -53,8 +53,8 @@ class download_thread (threading.Thread):
         # y, s = librosa.load("cache/audio{}.wav".format(self.index), sr=8000)
         # write_nparray_to_wav(y, "cache/audio{} sample8k.wav".format(self.index), 8000)
         
-        global compelet_history
-        compelet_history[self.index] = 1
+        global complete_history
+        complete_history[self.index] = 1
         print("video clip {} download complete".format(self.index))
 
 
@@ -103,15 +103,15 @@ class audio_thread(threading.Thread):
         while 1:
             print("processing index={}".format(index))
 
-            def check_compelete(index, len):
-                global compelet_history
+            def check_complete(index, len):
+                global complete_history
                 for i in range(index, index+len):
-                    if compelet_history[i] == 0:
+                    if complete_history[i] == 0:
                         return False
                 return True
-            if not check_compelete(index, chunksize):
+            if not check_complete(index, chunksize):
                 print("index={} download not finished".format(index))
-                if check_compelete(index+chunksize, chunksize):
+                if check_complete(index+chunksize, chunksize):
                     index += chunksize
                     continue
                 else:
