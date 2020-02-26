@@ -111,7 +111,7 @@ class audio_thread(threading.Thread):
     def run(self):
 
         index = 1
-        chunksize = 10
+        chunksize = 6
         timesleep = 1
         time.sleep(timesleep)
 
@@ -228,9 +228,11 @@ def clear_cache():
 
 def multi_process_download(url, complete_history):
     video = pafy.new(url)
-    videofile_history = []
     count = 0
-
+    # 应对可回放的直播 m3u8会返回从头开始所有片段
+    play = video.streams[-3]
+    response = requests.get(play.url)
+    last_m3u8obj = m3u8.loads(response.text)
     print("start downloading")
     while 1:
         play = video.streams[-3]
@@ -240,13 +242,14 @@ def multi_process_download(url, complete_history):
         m3u8obj = m3u8.loads(m3u8text)
 
         for videofile in m3u8obj.files:
-            if videofile in videofile_history:
+            if videofile in last_m3u8obj.files:
                 continue
             else:
-                videofile_history.append(videofile)
                 thread_new = download_thread(url=videofile, index=count, complete_history=complete_history)
                 thread_new.start()
                 count += 1
+
+        last_m3u8obj = m3u8obj
 
 if __name__ == "__main__" and 1:
     
@@ -264,13 +267,10 @@ if __name__ == "__main__" and 1:
         config=config,
         interim_results=True)
 
-    url = "https://www.youtube.com/watch?v=7eBaWhscixM"
+    url = "https://www.youtube.com/watch?v=oXdN39OwSvU"
 
-    
     p = Process(target=multi_process_download, args=(url, complete_history))
     p.start() # 多进程退出 TODO
 
     thread = audio_thread()
     thread.start()
-            
-
