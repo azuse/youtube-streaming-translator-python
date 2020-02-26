@@ -21,43 +21,42 @@ import re
 from moviepy.video.io.ffmpeg_reader import FFMPEG_VideoReader
 from google.cloud import speech_v1p1beta1 as speech
 import pyaudio
+from multiprocessing import Process,Array
 
 
 ###################################################################################################
 # my code
 ###################################################################################################
-complete_history = [0] * 3600 * 100
+complete_history = Array('i', [0]*3600*24)
+
 # multi-thread download stream video
 class download_thread (threading.Thread):
-    def __init__(self, url:str, index:int):
+    def __init__(self, url:str, index:int, complete_history):
         threading.Thread.__init__(self)
         self.url = url
         self.index = index
-        global thread_pool
-        thread_pool.append(self)
+        self.complete_history = complete_history
+        
+
     def run(self):
-        r = requests.get(self.url)
+        proxy = {"http":"http://127.0.0.1:7890","https":"http://127.0.0.1:7890"}
+        try:
+            r = requests.get(self.url, proxies=proxy)
+        except:
+            print("download fail index={}".format(self.index))
+            try:
+                r = requests.get(self.url, proxies=proxy)
+            except:
+                print("download fail index={}".format(self.index))
+                return
+
+        
         f = open("cache/video{}.ts".format(self.index), "wb")
         f.write(r.content)
         f.close()
 
-        # video = editor.VideoFileClip("cache/video{}.ts".format(self.index))
-        # audio = video.audio
-        # buffer = audio.reader.buffer
-        # buffer = buffer.mean(axis=1)
-        # sampleRate = audio.fps
-        # from scipy.io.wavfile import write
-        # scaled = np.int16(buffer *  32767)
-        # write("cache/audio{}.wav".format(self.index), sampleRate, scaled)
-        # import librosa    
-        # y, s = librosa.load("cache/audio{}.wav".format(self.index), sr=8000)
-        # write_nparray_to_wav(y, "cache/audio{} sample8k.wav".format(self.index), 8000)
-        
-        global complete_history
-        complete_history[self.index] = 1
-        print("video clip {} download complete".format(self.index))
-
-
+        self.complete_history[self.index] = 1
+        # print("video clip {} download complete".format(self.index))
 
 
 # multi-thread play video
@@ -78,9 +77,7 @@ class play_thread(threading.Thread):
                 ret,frame = cap.read()
                 if not ret:
                     break
-                """
-                your code here
-                """
+
                 cv2.imshow('frame',frame)
                 if cv2.waitKey(20) & 0xFF == ord('q'):
                     break    
@@ -88,49 +85,69 @@ class play_thread(threading.Thread):
             cap.release()
         print("playing end")
 
+
+multi_thread_buffer_list = []
+class multi_thread_read_buffer(threading.Thread):
+    def __init__(self, multi_thread_buffer_list, index, i):
+        self.multi_thread_buffer_list = multi_thread_buffer_list
+        self.index = index
+        self.i = i
+        threading.Thread.__init__(self)
+    def run(self):
+        video = editor.VideoFileClip("cache/video{}.ts".format(self.index + self.i))
+        print("read {}".format(self.index + self.i))
+        audio = video.audio
+        buffer_tmp = audio.reader.buffer
+        buffer_tmp = buffer_tmp.mean(axis=1)
+        sampleRate = audio.fps
+        self.multi_thread_buffer_list[self.i] = buffer_tmp
+        video.reader.close()
+        video.audio.reader.close_proc()
+
+# multi thread extract audio and speech2text and translation
 class audio_thread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        global thread_pool
-        thread_pool.append(self)
     def run(self):
 
         index = 1
-        chunksize = 1
-        time.sleep(chunksize)
+        chunksize = 10
+        timesleep = 1
+        time.sleep(timesleep)
 
         print("start playing")
         while 1:
             print("processing index={}".format(index))
 
-            def check_complete(index, len):
-                global complete_history
-                for i in range(index, index+len):
-                    if complete_history[i] == 0:
-                        return False
-                return True
-            if not check_complete(index, chunksize):
-                print("index={} download not finished".format(index))
-                if check_complete(index+chunksize, chunksize):
-                    index += chunksize
-                    continue
-                else:
-                    time.sleep(chunksize)
-                    continue
-
             continue_flag = 0
-            for i in range(0, chunksize):
-                video = editor.VideoFileClip("cache/video{}.ts".format(index+i))
-                audio = video.audio
-                buffer = audio.reader.buffer
-                buffer = buffer.mean(axis=1)
-                sampleRate = audio.fps
-                from scipy.io.wavfile import write
-                scaled = np.int16(buffer *  32767)
-                write("cache/audio{}.wav".format(index+i), sampleRate, scaled)
+            buffer = np.array([])
+            i = 0
 
-                video.reader.close()
-                video.audio.reader.close_proc()
+            global multi_thread_buffer_list
+            multi_thread_buffer_list = [0] * chunksize
+            threadpool = []
+            while i < chunksize:
+                global complete_history
+                if complete_history[index + i] != 1:
+                    continue
+
+                read_thread = multi_thread_read_buffer(multi_thread_buffer_list, index, i)
+                read_thread.start()
+                threadpool.append(read_thread)
+                
+                i+=1
+
+            for i,thread in enumerate(threadpool):
+                thread.join()
+                buffer = np.concatenate([buffer, multi_thread_buffer_list[i]])
+            
+            
+            
+
+            from scipy.io.wavfile import write
+            scaled = np.int16(buffer *  32767)
+            write("cache/audio{}.wav".format(index), 44100, scaled)
+            print("wav written")
 
 
             buffer = ""
@@ -139,11 +156,7 @@ class audio_thread(threading.Thread):
                 pcm_data = wf.readframes(wf.getnframes())
                 buffer = pcm_data
                 buffer_list.append(buffer)
-            for i in range(1, chunksize):
-                with contextlib.closing(wave.open("cache/audio{}.wav".format(index+i), 'rb')) as wf:
-                    pcm_data = wf.readframes(wf.getnframes())
-                    # buffer += pcm_data
-                    buffer_list.append(pcm_data)
+            
             
 
             global streaming_config, speech, client
@@ -186,7 +199,11 @@ class audio_thread(threading.Thread):
                     if re.search(r'\b(exit|quit)\b', transcript, re.I):
                         print('Exiting..')
                         break
-   
+
+            # 调谷歌翻译 TODO
+            # 命令行显示优化 TODO
+
+
             index += chunksize
 
                 
@@ -202,25 +219,40 @@ def write_nparray_to_wav(array, filename, sampleRate):
 
 
 def clear_cache():
-    shutil.rmtree('cache/*', ignore_errors=True)
-    os.makedirs("cache")
+    try:
+        shutil.rmtree('cache', ignore_errors=True)
+        time.sleep(1)
+        os.makedirs("cache")
+    except:
+        pass
 
+def multi_process_download(url, complete_history):
+    video = pafy.new(url)
+    videofile_history = []
+    count = 0
 
+    print("start downloading")
+    while 1:
+        play = video.streams[-3]
+        response = requests.get(play.url)
+
+        m3u8text:str = response.text
+        m3u8obj = m3u8.loads(m3u8text)
+
+        for videofile in m3u8obj.files:
+            if videofile in videofile_history:
+                continue
+            else:
+                videofile_history.append(videofile)
+                thread_new = download_thread(url=videofile, index=count, complete_history=complete_history)
+                thread_new.start()
+                count += 1
 
 if __name__ == "__main__" and 1:
-    import signal
-    def signal_handler(sig, frame):
-        print('clearing cache')
-        shutil.rmtree('cache/*', ignore_errors=True)
-        for thread in thread_pool:
-            thread.stopped = True
-        sys.exit(0)
-    signal.signal(signal.SIGINT, signal_handler)
-
+    
     # os.makedirs("cache")
-    # clear_cache()
+    clear_cache()
 
-    thread_pool = []
 
     client = speech.SpeechClient()
     config = speech.types.RecognitionConfig(
@@ -232,31 +264,13 @@ if __name__ == "__main__" and 1:
         config=config,
         interim_results=True)
 
+    url = "https://www.youtube.com/watch?v=7eBaWhscixM"
 
-    stream = pafy.new("https://www.youtube.com/watch?v=MFLcCM5Qz_o")
-    videofile_history = []
-
-    count = 0
-    thread = audio_thread()
-    thread.start()
     
-    while 1:
-        play = stream.getbest()
-        response = requests.get(play.url)
+    p = Process(target=multi_process_download, args=(url, complete_history))
+    p.start() # 多进程退出 TODO
 
-        m3u8text:str = response.text
-        m3u8obj = m3u8.loads(m3u8text)
-
-        for videofile in m3u8obj.files:
-            if videofile in videofile_history:
-                continue
-            else:
-                videofile_history.append(videofile)
-            thread_new = download_thread(url=videofile, index=count)
-            thread_new.start()
-            count += 1
-            
-if __name__ == "__main__":
     thread = audio_thread()
     thread.start()
+            
 
