@@ -9,4 +9,6 @@ moviepy
 wave
 requests
 pyaudio
-shutil
+pafy
+youtube-dl
+scipy

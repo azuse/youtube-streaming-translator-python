@@ -40,7 +40,7 @@ sem=Semaphore(1)
 
 def print(string):
     sys.stdout.write("                                           \r")
-    sys.stdout.write(string + " \n")
+    sys.stdout.write(str(string) + " \n")
 
 # multi-thread download stream video
 class download_thread (threading.Thread):
@@ -128,7 +128,7 @@ class multi_thread_read_buffer(threading.Thread):
 
 
 # multi thread extract audio and speech2text and translation
-class audio_thread(threading.Thread):
+class main_thread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
     def run(self):
@@ -234,8 +234,8 @@ class audio_thread(threading.Thread):
                         print("Network timeout")
                         continue
                     print(result['translatedText'])
-                    global finish_count
-                    finish_count += chunksize
+            global finish_count
+            finish_count += chunksize
 
            
 
@@ -281,6 +281,9 @@ def multi_process_download(url, complete_history, download_count, success_count,
     global count
     # 应对可回放的直播 m3u8会返回从头开始所有片段
     play = video.streams[max(-1,-len(video.streams))]
+    if play.url.find(".m3u8") == -1:
+        print("输入的链接不是直播")
+        exit()
     proxy = {"http":"http://127.0.0.1:7890","https":"http://127.0.0.1:7890"}
     response = requests.get(play.url, proxies=proxy)
     # 确认链接结尾是.m3u8 TODO
@@ -298,7 +301,6 @@ def multi_process_download(url, complete_history, download_count, success_count,
         m3u8text:str = response.text
         m3u8obj = m3u8.loads(m3u8text)
         m3u8_index = make_m3u8_index(m3u8obj)
-
         for i,videofile in enumerate(m3u8obj.files):
             if m3u8_index[i] in last_m3u8obj_index:
                 continue
@@ -309,11 +311,11 @@ def multi_process_download(url, complete_history, download_count, success_count,
                 count += 1
                 download_count.value += 1
 
-        last_m3u8obj = m3u8obj
+        last_m3u8obj_index = m3u8_index
 
 
 if __name__ == "__main__" and 1:
-    # multi_process_download("https://www.youtube.com/watch?v=HCBEzXapaT0", complete_history)
+    # multi_process_download("https://www.youtube.com/watch?v=0Aen53AMiJo", complete_history, download_count, success_count, fail_count, sem)
     # os.makedirs("cache")
     clear_cache()
 
@@ -334,7 +336,7 @@ if __name__ == "__main__" and 1:
     p = Process(target=multi_process_download, args=(url, complete_history, download_count, success_count, fail_count, sem), daemon=True)
     p.start() # 多进程退出 TODO
 
-    thread = audio_thread()
+    thread = main_thread()
     thread.setDaemon(True)
     thread.start()
 
