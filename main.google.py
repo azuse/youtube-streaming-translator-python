@@ -22,7 +22,7 @@ from moviepy.video.io.ffmpeg_reader import FFMPEG_VideoReader
 from google.cloud import speech_v1p1beta1 as speech
 from google.cloud import translate_v2 as translate
 import pyaudio
-from multiprocessing import Process,Array,Value
+from multiprocessing import Process,Array,Value,Semaphore
 
 
 ###################################################################################################
@@ -32,9 +32,11 @@ complete_history = Array('i', [0]*3600*24)
 download_count = Value('i', 0)
 success_count = Value('i', 0)
 fail_count = Value('i', 0)
-read_count = 0
+read_start_count=0
+read_finish_count = 0
 send_count = 0
 finish_count = 0
+sem=Semaphore(1)
 
 def print(string):
     sys.stdout.write("                                           \r")
@@ -42,14 +44,14 @@ def print(string):
 
 # multi-thread download stream video
 class download_thread (threading.Thread):
-    def __init__(self, url:str, index:int, complete_history, success_count, fail_count):
+    def __init__(self, url:str, index:int, complete_history, success_count, fail_count, sem):
         threading.Thread.__init__(self)
         self.url = url
         self.index = index
         self.complete_history = complete_history
         self.success_count = success_count
         self.fail_count = fail_count
-        
+        self.sem = sem
 
     def run(self):
         proxy = {"http":"http://127.0.0.1:7890","https":"http://127.0.0.1:7890"}
@@ -72,6 +74,7 @@ class download_thread (threading.Thread):
         f.close()
 
         self.complete_history[self.index] = 1
+        self.sem.release()
         # print("video clip {} download complete".format(self.index))
 
 
@@ -119,8 +122,8 @@ class multi_thread_read_buffer(threading.Thread):
         self.multi_thread_buffer_list[self.i] = buffer_tmp
         video.reader.close()
         video.audio.reader.close_proc()
-        global read_count
-        read_count += 1   
+        global read_finish_count
+        read_finish_count += 1   
 
 
 
@@ -131,14 +134,14 @@ class audio_thread(threading.Thread):
     def run(self):
 
         index = 1
-        chunksize = 10
+        chunksize = 6
         timesleep = 1
         time.sleep(timesleep)
 
         
 
         print("start playing")
-        while 1:
+        while 1:    
             # print("processing index={}".format(index))
 
             buffer = np.array([])
@@ -150,8 +153,15 @@ class audio_thread(threading.Thread):
             while i < chunksize:
                 global complete_history
                 if complete_history[index + i] != 1:
-                    continue
+                    if complete_history[index + i + 1] == 1:
+                        index += 1
+                    else:    
+                        global sem
+                        sem.acquire()
+                        continue
 
+                global read_start_count
+                read_start_count += 1
                 read_thread = multi_thread_read_buffer(multi_thread_buffer_list, index, i)
                 read_thread.start()
                 threadpool.append(read_thread)
@@ -182,7 +192,11 @@ class audio_thread(threading.Thread):
             requests = [speech.types.StreamingRecognizeRequest(audio_content=buffer)]
             global send_count
             send_count += chunksize
-            responses = client.streaming_recognize(streaming_config, requests)
+            try:
+                responses = client.streaming_recognize(streaming_config, requests)
+            except:
+                print("Network timeout")
+                continue
             num_chars_printed = 0
 
             for response in responses:
@@ -214,7 +228,11 @@ class audio_thread(threading.Thread):
                 else:
                     print(transcript + overwrite_chars)
                     # translation
-                    result = translate_client.translate(transcript, target_language="zh")
+                    try:
+                        result = translate_client.translate(transcript, target_language="zh")
+                    except:
+                        print("Network timeout")
+                        continue
                     print(result['translatedText'])
                     global finish_count
                     finish_count += chunksize
@@ -227,9 +245,6 @@ class audio_thread(threading.Thread):
             index += chunksize
 
         # end while
-
-                
-
         print("playing end")
 
 
@@ -261,11 +276,11 @@ def make_m3u8_index(m3u8obj):
 
 
 count = 0
-def multi_process_download(url, complete_history, download_count, success_count, fail_count):
+def multi_process_download(url, complete_history, download_count, success_count, fail_count, sem):
     video = pafy.new(url)
     global count
     # 应对可回放的直播 m3u8会返回从头开始所有片段
-    play = video.streams[max(-3,-len(video.streams))]
+    play = video.streams[max(-1,-len(video.streams))]
     proxy = {"http":"http://127.0.0.1:7890","https":"http://127.0.0.1:7890"}
     response = requests.get(play.url, proxies=proxy)
     # 确认链接结尾是.m3u8 TODO
@@ -273,10 +288,11 @@ def multi_process_download(url, complete_history, download_count, success_count,
     last_m3u8obj_index = make_m3u8_index(last_m3u8obj)
     print("start downloading")
     while 1:
-        play = video.streams[-4]
+        play = video.streams[max(-1,-len(video.streams))]
         proxy = {"http":"http://127.0.0.1:7890","https":"http://127.0.0.1:7890"}
         try:
             response = requests.get(play.url, proxies=proxy)
+            
         except:
             continue
         m3u8text:str = response.text
@@ -287,13 +303,14 @@ def multi_process_download(url, complete_history, download_count, success_count,
             if m3u8_index[i] in last_m3u8obj_index:
                 continue
             else:
-                thread_new = download_thread(url=videofile, index=count, complete_history=complete_history, success_count=success_count, fail_count=fail_count)
+                thread_new = download_thread(url=videofile, index=count, complete_history=complete_history, success_count=success_count, fail_count=fail_count, sem=sem)
                 thread_new.setDaemon(True)
                 thread_new.start()
                 count += 1
                 download_count.value += 1
 
         last_m3u8obj = m3u8obj
+
 
 if __name__ == "__main__" and 1:
     # multi_process_download("https://www.youtube.com/watch?v=HCBEzXapaT0", complete_history)
@@ -312,9 +329,9 @@ if __name__ == "__main__" and 1:
         config=config,
         interim_results=True)
 
-    url = "https://www.youtube.com/watch?v=dp5tkcqIiRQ"
+    url = "https://www.youtube.com/watch?v=0Aen53AMiJo"
 
-    p = Process(target=multi_process_download, args=(url, complete_history, download_count, success_count, fail_count), daemon=True)
+    p = Process(target=multi_process_download, args=(url, complete_history, download_count, success_count, fail_count, sem), daemon=True)
     p.start() # 多进程退出 TODO
 
     thread = audio_thread()
@@ -322,6 +339,6 @@ if __name__ == "__main__" and 1:
     thread.start()
 
     while 1:
-        sys.stdout.write("{}  {}  {}  {}  {}  {}\r".format(download_count.value, success_count.value, fail_count.value, read_count, send_count, finish_count))
+        sys.stdout.write("{} {} {} {} {} {} {}\r".format(download_count.value, success_count.value, fail_count.value,read_start_count, read_finish_count, send_count, finish_count))
         sys.stdout.flush()
         time.sleep(0.1)
