@@ -222,7 +222,7 @@ class MainThread(threading.Thread):
         global chunksize
 
         # 启动翻译线程
-        for i in range(0,3):
+        for i in range(0,1):
             client_thread = MultiThreadTranslate()
             client_thread.setDaemon(True)
             client_thread.start()
@@ -242,12 +242,12 @@ class MainThread(threading.Thread):
             while i < chunksize:
                 global complete_history
                 if complete_history[index + i] != 1:
-                    if complete_history[index + i + 1] == 1:
-                        index += 1  # index+1并不会跳过没下载好的index+i TODO
-                    else:
-                        global sem
-                        sem.acquire()
-                        continue
+                    # if complete_history[index + i + 1] == 1:
+                    #     index += 1  # index+1并不会跳过没下载好的index+i TODO
+                    # else:
+                    global sem
+                    sem.acquire()
+                    continue
 
                 global read_start_count
                 read_start_count += 1
@@ -355,7 +355,7 @@ def multi_process_download(url, complete_history, download_count, success_count,
                 count += 1
                 download_count.value += 1
 
-        last_m3u8obj_index = m3u8_index
+        last_m3u8obj_index += m3u8_index
 
 
 if __name__ == "__main__" and 1:
@@ -375,7 +375,7 @@ if __name__ == "__main__" and 1:
     #     config=config,
     #     interim_results=True)
 
-    url = "https://www.youtube.com/watch?v=XroU9zRtFI0"
+    url = "https://www.youtube.com/watch?v=8WwX_mlWHT0"
     video = pafy.new(url)
     videoid = video.videoid
     try:
