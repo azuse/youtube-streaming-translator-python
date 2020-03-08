@@ -12,3 +12,5 @@ pyaudio
 pafy
 youtube-dl
 scipy
+librosa
+pysndfx
