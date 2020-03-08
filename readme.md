@@ -9,7 +9,7 @@
     ```
     pip install -r requirements.txt
     ```
-    > 注：可能有不全的或者缺少前置依赖的库，需要另外自行安装
+    > 注：[安装pyaudio报错：cannot-install-pyaudio-gcc-error](https://stackoverflow.com/questions/20023131/cannot-install-pyaudio-gcc-error)
 2. 添加谷歌api key到Path中  
    
     Linux&Mac
