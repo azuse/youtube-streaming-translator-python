@@ -7,9 +7,10 @@
 ## 使用方法
 1. 安装依赖库
     ```
+    sudo apt-get install libsm6 libxrender1 libxext-dev
     pip install -r requirements.txt
     ```
-    > 注：[安装pyaudio报错：cannot-install-pyaudio-gcc-error](https://stackoverflow.com/questions/20023131/cannot-install-pyaudio-gcc-error)
+    > 注：[安装pyaudio报错，需要自己编译安装portaudio：cannot-install-pyaudio-gcc-error](https://stackoverflow.com/questions/20023131/cannot-install-pyaudio-gcc-error)
 2. 添加谷歌api key到Path中  
    
     Linux&Mac
