@@ -5,6 +5,11 @@
 本脚本使用[谷歌云语音转文字api](https://cloud.google.com/speech-to-text)与[谷歌云翻译api](https://cloud.google.com/translate)实现对油管直播的实时字幕与翻译。  
 脚本部分功能暂时不能使用代理，请配置全局透明代理或在不需要代理的网络环境下使用。
 ## 使用方法
+0. 克隆本仓库
+    ```
+    git clone github.com/azuse/youtube-streaming-translator-python
+    cd youtube-streaming-translator-python
+    ```
 1. 安装依赖库
     ```
     sudo apt-get install libsm6 libxrender1 libxext-dev
