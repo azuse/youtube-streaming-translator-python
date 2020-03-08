@@ -25,9 +25,9 @@
     Windows CMD
     ```bash
     set GOOGLE_APPLICATION_CREDENTIALS=[PATH]
-    ```bash
-    Windows PowerShell
     ```
+    Windows PowerShell
+    ```bash
     $env:GOOGLE_APPLICATION_CREDENTIALS="[PATH]"
     ```
     > 例： `export GOOGLE_APPLICATION_CREDENTIALS="/home/user/Downloads/service-account-file.json"`
