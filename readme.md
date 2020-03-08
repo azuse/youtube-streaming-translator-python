@@ -5,23 +5,29 @@
 本脚本使用[谷歌云语音转文字api](https://cloud.google.com/speech-to-text)与[谷歌云翻译api](https://cloud.google.com/translate)实现对油管直播的实时字幕与翻译。  
 脚本部分功能暂时不能使用代理，请配置全局透明代理或在不需要代理的网络环境下使用。
 ## 使用方法
-1. 安装依赖库
+0. 克隆本仓库
+    ```bash
+    git clone github.com/azuse/youtube-streaming-translator-python
+    cd youtube-streaming-translator-python
     ```
+1. 安装依赖库
+    ```bash
+    sudo apt-get install libsm6 libxrender1 libxext-dev
     pip install -r requirements.txt
     ```
-    > 注：可能有不全的或者缺少前置依赖的库，需要另外自行安装
+    > 注：[安装pyaudio报错，需要自己编译安装portaudio：cannot-install-pyaudio-gcc-error](https://stackoverflow.com/questions/20023131/cannot-install-pyaudio-gcc-error)
 2. 添加谷歌api key到Path中  
    
     Linux&Mac
-    ```
+    ```bash
     export GOOGLE_APPLICATION_CREDENTIALS="[PATH]"
     ```
     Windows CMD
-    ```
+    ```bash
     set GOOGLE_APPLICATION_CREDENTIALS=[PATH]
     ```
     Windows PowerShell
-    ```
+    ```bash
     $env:GOOGLE_APPLICATION_CREDENTIALS="[PATH]"
     ```
     > 例： `export GOOGLE_APPLICATION_CREDENTIALS="/home/user/Downloads/service-account-file.json"`
@@ -37,7 +43,7 @@
    将`url = "https://www.youtube.com/watch?v=8WwX_mlWHT0"`中的地址修改为您需要翻译的直播地址
    > 注：如果地址不是直播的话，程序会自动开始下载完整视频（应该会提示报错）
 5. 启动脚本
-   ```
+   ```bash
    python main.google.py
    ```
    > 注：`main.ibm.py` 是过去测试的IBM Waston API版本，已废弃
