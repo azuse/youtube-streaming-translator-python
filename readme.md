@@ -6,12 +6,12 @@
 脚本部分功能暂时不能使用代理，请配置全局透明代理或在不需要代理的网络环境下使用。
 ## 使用方法
 0. 克隆本仓库
-    ```
+    ```bash
     git clone github.com/azuse/youtube-streaming-translator-python
     cd youtube-streaming-translator-python
     ```
 1. 安装依赖库
-    ```
+    ```bash
     sudo apt-get install libsm6 libxrender1 libxext-dev
     pip install -r requirements.txt
     ```
@@ -19,13 +19,13 @@
 2. 添加谷歌api key到Path中  
    
     Linux&Mac
-    ```
+    ```bash
     export GOOGLE_APPLICATION_CREDENTIALS="[PATH]"
     ```
     Windows CMD
-    ```
+    ```bash
     set GOOGLE_APPLICATION_CREDENTIALS=[PATH]
-    ```
+    ```bash
     Windows PowerShell
     ```
     $env:GOOGLE_APPLICATION_CREDENTIALS="[PATH]"
@@ -43,7 +43,7 @@
    将`url = "https://www.youtube.com/watch?v=8WwX_mlWHT0"`中的地址修改为您需要翻译的直播地址
    > 注：如果地址不是直播的话，程序会自动开始下载完整视频（应该会提示报错）
 5. 启动脚本
-   ```
+   ```bash
    python main.google.py
    ```
    > 注：`main.ibm.py` 是过去测试的IBM Waston API版本，已废弃
