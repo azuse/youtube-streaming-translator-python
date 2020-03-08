@@ -358,7 +358,7 @@ def multi_process_download(url, complete_history, download_count, success_count,
         last_m3u8obj_index += m3u8_index
 
 
-if __name__ == "__main__" and 1:
+if __name__ == "__main__":
     # multi_process_download("https://www.youtube.com/watch?v=0Aen53AMiJo", complete_history, download_count, success_count, fail_count, sem)
     # os.makedirs("cache")
     # clear_cache()
