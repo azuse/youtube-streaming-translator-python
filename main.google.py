@@ -1,3 +1,4 @@
+import queue
 import pafy
 from typing import List
 import requests
@@ -62,7 +63,7 @@ class DownloadThread(threading.Thread):
 
         except:
             self.fail_count.value += 1
-            if self.run(): 
+            if self.run():
                 self.fail_count.value -= 1
                 return True
             else:
@@ -91,7 +92,8 @@ class PlayThread(threading.Thread):
         print("start playing")
         while 1:
             global videoid
-            cap = cv2.VideoCapture("cache/{}/video{}.ts".format(videoid, index))
+            cap = cv2.VideoCapture(
+                "cache/{}/video{}.ts".format(videoid, index))
             video_list = os.listdir("cache")
             index += 1
             while (True):
@@ -110,6 +112,8 @@ class PlayThread(threading.Thread):
 multi_thread_buffer_list = []
 
 # 读取视频段并转码线程，转码后的wav放在multi_thread_buffer_list中
+
+
 class multi_thread_read_buffer(threading.Thread):
     def __init__(self, multi_thread_buffer_list, index, i):
         self.multi_thread_buffer_list = multi_thread_buffer_list
@@ -136,8 +140,6 @@ class multi_thread_read_buffer(threading.Thread):
         read_finish_count += 1
 
 
-import queue
-
 wav_bytes_queue = queue.Queue()
 
 
@@ -146,28 +148,38 @@ class MultiThreadTranslate(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         # 语音自适应
-        boost = 4 # 识别指定词语的概率 推荐 [0,20] 
-        speech_contexts = [ {"phrases": "ホロライブ", "boost": boost},
-                            {"phrases": "しらかみ", "boost": boost},
-                            {"phrases": "ふぶき", "boost": boost},
-                            {"phrases": "うさだ", "boost": boost},
-                            {"phrases": "ぺこら", "boost": boost},
-                            {"phrases": "ぺこ", "boost": boost},
-                            {"phrases": "よし", "boost": boost},
-                            {"phrases": "よしょ", "boost": boost},
-                            {"phrases": "えしょう", "boost": boost},
-                            {"phrases": "ARK", "boost": boost},
-                            {"phrases": "やめろ", "boost": boost},
-                            {"phrases": "マリン", "boost": boost},
-                            {"phrases": "まつり", "boost": boost},
-                            {"phrases": "せんちょう", "boost": boost}
-                            ]
-        
+        boost = 3  # 识别指定词语的概率 推荐 [0,20]
+        names = ["ホロライブ",
+                 "白上",
+                 "ふぶき",
+                 "兎田",
+                 "ぺこら",
+                 "ぺこ",
+                 "マリン",
+                 "まつり",
+                 "せんちょう",
+                 "はあと",
+                 "はあちゃま"
+                 ]
+
+        boost_words = 4
+        words = [
+            "よし",
+            "よしょ",
+            "ARK",
+            "やめろ",
+            "先輩",
+            "セーブ",
+            "キモオタ"]
+        speech_contexts = [{"phrases": names, "boost": boost},
+                           {"phrases": words, "boost": boost_words}
+                           ]
+
         speaker_diarization_config = speech.types.SpeakerDiarizationConfig(  # 区分讲话人配置
-            enable_speaker_diarization = True,
-            min_speaker_count = 1,
-            max_speaker_count = 2
-            )
+            enable_speaker_diarization=True,
+            min_speaker_count=1,
+            max_speaker_count=2
+        )
 
         self.config = speech.types.RecognitionConfig(
             encoding=speech.enums.RecognitionConfig.AudioEncoding.LINEAR16,
@@ -175,10 +187,10 @@ class MultiThreadTranslate(threading.Thread):
             language_code='ja-JP',
             max_alternatives=1,
             enable_automatic_punctuation=True,  # 启用标点符号
-            diarization_config=speaker_diarization_config, # 区分讲话人
-            speech_contexts=speech_contexts # 语音自适应
-            
-            )
+            diarization_config=speaker_diarization_config,  # 区分讲话人
+            speech_contexts=speech_contexts  # 语音自适应
+
+        )
         self.streaming_config = speech.types.StreamingRecognitionConfig(
             config=self.config,
             interim_results=True)
@@ -189,13 +201,15 @@ class MultiThreadTranslate(threading.Thread):
         while 1:
             wav_bytes = wav_bytes_queue.get()
             # global streaming_config, speech, client, translate_client
-            speech2text_requests = [speech.types.StreamingRecognizeRequest(audio_content=wav_bytes)]
+            speech2text_requests = [
+                speech.types.StreamingRecognizeRequest(audio_content=wav_bytes)]
 
             global send_count, chunksize
             send_count += chunksize
 
             try:
-                responses = self.speech_client.streaming_recognize(self.streaming_config, speech2text_requests)
+                responses = self.speech_client.streaming_recognize(
+                    self.streaming_config, speech2text_requests)
             except:
                 print("Speech2text timeout")
 
@@ -223,35 +237,42 @@ class MultiThreadTranslate(threading.Thread):
 
                     # 文字送Queue
                     global socket_queue_jp
-                    socket_queue_jp.put(transcript)
+                    if not socket_queue_jp.full():
+                        socket_queue_jp.put(transcript)
 
                     # 翻译
                     try:
-                        result = self.translate_client.translate(
-                            transcript, target_language="zh")
+                        baidu = False  # 是否使用百度api
+                        if not baidu:
+                            result = self.translate_client.translate(
+                                transcript, target_language="zh")
+                            text = result['translatedText']
+                        else:
+                            from baiduapi import baidu_translate
+                            text = baidu_translate(transcript)
 
                         # 文字送Queue
-                        global socket_process_cn
-                        socket_queue_cn.put(result['translatedText'])
-                        
-                        # 百度翻译 TODO
-                    except:
-                        print("Translation timeout")
+                        global socket_queue_cn
+                        if not socket_queue_cn.full():
+                            socket_queue_cn.put(text)
+
+                    except Exception as e:
+                        print(e)
                         continue
-                    print(result['translatedText'])
+
+                    print(text)
+
                     with open("cache/{}/speech.txt".format(videoid), "a", encoding="utf-8") as f:
                         f.write(transcript + "\n")
 
                     with open("cache/{}/translate.txt".format(videoid), "a", encoding="utf-8") as f:
-                        f.write(result['translatedText'] + "\n")
+                        f.write(text + "\n")
+
             global finish_count
             finish_count += chunksize
 
-            
 
-
-
-chunksize = 2
+chunksize = 4
 
 
 # multi thread extract audio and speech2text and translation
@@ -265,12 +286,10 @@ class MainThread(threading.Thread):
         global chunksize
 
         # 启动翻译线程
-        for i in range(0,1):
+        for i in range(0, 1):
             client_thread = MultiThreadTranslate()
             # client_thread.setDaemon(True)
             client_thread.start()
-
-       
 
         print("start playing")
         while 1:
@@ -295,7 +314,8 @@ class MainThread(threading.Thread):
                 global read_start_count
                 read_start_count += 1
 
-                read_thread = multi_thread_read_buffer(multi_thread_buffer_list, index, i)
+                read_thread = multi_thread_read_buffer(
+                    multi_thread_buffer_list, index, i)
                 read_thread.start()
                 threadpool.append(read_thread)
 
@@ -305,8 +325,6 @@ class MainThread(threading.Thread):
                 thread.join()
                 buffer = np.concatenate([buffer, multi_thread_buffer_list[i]])
 
-            
-            
             # 调库降噪
             import librosa
             from pysndfx import AudioEffectsChain
@@ -318,18 +336,21 @@ class MainThread(threading.Thread):
                 threshold_h = round(np.median(cent))*1.5
                 threshold_l = round(np.median(cent))*0.1
 
-                less_noise = AudioEffectsChain().lowshelf(gain=-30.0, frequency=threshold_l, slope=0.8).highshelf(gain=-12.0, frequency=threshold_h, slope=0.5)#.limiter(gain=6.0)
+                less_noise = AudioEffectsChain().lowshelf(gain=-30.0, frequency=threshold_l,
+                                                          slope=0.8).highshelf(gain=-12.0, frequency=threshold_h, slope=0.5)  # .limiter(gain=6.0)
                 y_clean = less_noise(y)
 
                 return y_clean
 
-            buffer_clean = reduce_noise_power(buffer, 44100)
+            try:
+                buffer_clean = reduce_noise_power(buffer, 44100)
+            except:
+                buffer_clean = buffer
             scaled = np.int16(buffer_clean * 32767)
 
             from scipy.io.wavfile import write
             global videoid
             write("cache/{}/audio{}.wav".format(videoid, index), 44100, scaled)
-
 
             with contextlib.closing(wave.open("cache/{}/audio{}.wav".format(videoid, index), 'rb')) as wf:
                 pcm_data = wf.readframes(wf.getnframes())
@@ -337,7 +358,6 @@ class MainThread(threading.Thread):
 
             global wav_bytes_queue
             wav_bytes_queue.put(wav_bytes)
-
 
             index += chunksize
 
@@ -373,13 +393,16 @@ def make_m3u8_index(m3u8obj):
 
 
 count = 0
+
+
 def multi_process_download(url, complete_history, download_count, success_count, fail_count, sem, videoid, video):
     # video = pafy.new(url)
 
     global count
 
     # 应对可回放的直播 m3u8会返回从头开始所有片段
-    play = video.streams[max(-3, -len(video.streams))]  # 1080p60的片段会不会比480p片段时间短
+    play = video.streams[max(-3, -len(video.streams))
+                         ]  # 1080p60的片段会不会比480p片段时间短
     if play.url.find(".m3u8") == -1:
         print("输入的链接不是直播")
         exit()
@@ -389,7 +412,7 @@ def multi_process_download(url, complete_history, download_count, success_count,
 
     last_m3u8obj = m3u8.loads(response.text)
     last_m3u8obj_index = make_m3u8_index(last_m3u8obj)
- 
+
     print("start downloading")
     while 1:
         play = video.streams[max(-3, -len(video.streams))]
@@ -414,9 +437,8 @@ def multi_process_download(url, complete_history, download_count, success_count,
                 thread_new.start()
                 count += 1
                 download_count.value += 1
-
+        time.sleep(0.2)
         last_m3u8obj_index += m3u8_index
-
 
 
 if __name__ == "__main__" and 1:
@@ -436,7 +458,7 @@ if __name__ == "__main__" and 1:
     #     config=config,
     #     interim_results=True)
 
-    url = "https://www.youtube.com/watch?v=bcoh74RNpsk"
+    url = "https://www.youtube.com/watch?v=02n3gqieXXY"
     print("Connecting to youtube...")
     video = pafy.new(url)
     videoid = video.videoid
@@ -446,18 +468,19 @@ if __name__ == "__main__" and 1:
         pass
     print("Connected!")
 
-    # 重载退出信号 
+    # 重载退出信号
     import signal
     import sys
+
     def signal_handler(sig, frame):
-        print('{} exited'.format(os.getpid()))
+        # sys.stdout.write('{} exited\n'.format(os.getpid()))
         os._exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
     # 启动flask进程
     from flasksocket import socket_process_jp, socket_process_cn, http_process
-    socket_queue_jp = Queue(10)
-    socket_queue_cn = Queue(10)
+    socket_queue_jp = Queue(9999)
+    socket_queue_cn = Queue(9999)
     flask_1 = Process(target=socket_process_jp, args=(socket_queue_jp,))
     flask_2 = Process(target=socket_process_cn, args=(socket_queue_cn,))
     flask_3 = Process(target=http_process)
@@ -468,11 +491,12 @@ if __name__ == "__main__" and 1:
     # 启动下载进程
     p = Process(target=multi_process_download, args=(url, complete_history,
                                                      download_count, success_count, fail_count, sem, videoid, video))
-    p.start() 
+    p.start()
 
-    # 重载主进程退出信号 
+    # 重载退出信号
     import signal
     import sys
+
     def signal_handler(sig, frame):
         print('You pressed Ctrl+C!')
         os.kill(p.pid, signal.SIGINT)
@@ -482,12 +506,10 @@ if __name__ == "__main__" and 1:
         os._exit(0)
     signal.signal(signal.SIGINT, signal_handler)
 
-
     # 启动转码线程
     thread = MainThread()
     # thread.setDaemon(True)
     thread.start()
-
 
     while 1:
         # 输出下载状态

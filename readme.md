@@ -38,36 +38,48 @@
     ```
     > 例： `export GOOGLE_APPLICATION_CREDENTIALS="/home/user/Downloads/service-account-file.json"`
 
-3. 修改代理  
+3. *使用百度翻译API
+   
+   脚本可以选择使用百度翻译API或谷歌翻译API，使用百度翻译API需要：
+    * 把翻译函数中的`baidu`设置为`baidu=True`（目前在245行）
+    * 在`baiduapi.py`中设置自己的`APP ID`和`SECRET KEY`
+
+
+4. 修改代理  
    * 不使用代理:
         请把代码中所有`response = requests.get(play.url, proxies=proxy)`的`, proxies=proxy`删掉
    * 使用代理:
         请把代码中所有`proxy = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}` 改为您使用的HTTP代理地址，**同时需要配置透明代理** （推荐[Clash的TAP模式](https://docs.cfw.lbyczf.com/contents/tap.html)）
 
-4. 修改直播地址 
+5. 修改直播地址 
     
-   将`url = "https://www.youtube.com/watch?v=8WwX_mlWHT0"`中的地址修改为您需要翻译的直播地址
+   将`url = "https://www.youtube.com/watch?v=ylFDswiFduE"`中的地址修改为您需要翻译的直播地址
    > 注：如果地址不是直播的话，程序会自动开始下载完整视频（应该会提示报错）
 
-5. 启动脚本
+6. 启动脚本
  
    ```bash
    python main.google.py
    ```
-   > 注：`main.ibm.py` 是过去测试的IBM Waston API版本，已废弃
 
 7. 脚本输出  
    
    最后一行输出数字分别代表：  
    `开始下载的视频片段数 下载完成的视频片段数 下载失败的视频片段数 开始转码的视频片段数 转码完成已经发向谷歌API的片段数 从谷歌API收到回复（翻译完成）的片段数`
 
-    > 注：目前脚本多进程退出不完善，可能导致子进程变成孤儿进程，请注意
-
 8. 浏览器输出
    
    脚本会自动在0.0.0.0:5000上开一个http服务器，同时在0.0.0.0:5001和0.0.0.0:5002上开socket服务器。
    访问`http://127.0.0.1:5000`或`http://你的服务器ip:5000`会打开显示字幕用的网页，网页分别从5001和5002的socket读取日文与中文字幕。
    网页的CSS有待优化，目前只是一个测试效果。
+
+9. *Chunksize
+    
+    油管的直播是以1s左右时间一段.ts文件的格式传输的，在将视频段转为音频后，可以决定要把多少段视频合在一起送给谷歌的流式音频识别API，决定多少段合并在一起的变量叫`chunksize`。  
+    
+    如果设置为较小的值（1），每次音频识别API可能只会返回一个词，日译中效果不好；如果设置为较大值（10），意味着每10s才会更新一次字幕；  
+    
+    所以`chunksize`的大小对识别效果有很大影响，目前感觉设置为`4`效果较好，每4s一个片段。但是，如果一句话跨越两个4s片段，流式音频识别API对于两个连起来的片段很多时候还是会拆成两句话来识别，导致中间内容丢失。  
 
 ## 效果
 ![](res/pre.gif)

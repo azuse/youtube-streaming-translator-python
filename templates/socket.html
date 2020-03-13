@@ -17,19 +17,23 @@
 
 
     <script>
-            var ws_cn = new WebSocket("ws://127.0.0.1:5001/");  
+            var ws_cn = new WebSocket("ws://"+window.document.domain+":5001/");  
 
             ws_cn.onmessage = function (event) {
                 content = document.createTextNode(event.data);
                 $("#jp").val($("#jp").val() + content.data);
+                var textarea = document.getElementById('jp');
+                textarea.scrollTop = textarea.scrollHeight;
 
             };
 
-            var ws_jp = new WebSocket("ws://127.0.0.1:5002/");  
+            var ws_jp = new WebSocket("ws://"+window.document.domain+":5002/");  
 
             ws_jp.onmessage = function (event) {
                 content = document.createTextNode(event.data);
                 $("#cn").val($("#cn").val() + content.data);
+                var textarea = document.getElementById('cn');
+                textarea.scrollTop = textarea.scrollHeight;
 
             };
 
