@@ -52,12 +52,12 @@
         Ubuntu/Linux
         ```bash
         export http_proxy=http://127.0.0.1:7890
-        export http2_proxy=http://127.0.0.1:7890
+        export https_proxy=http://127.0.0.1:7890
         ```
         Windows
         ```cmd
         set http_proxy=http://127.0.0.0.1:7890
-        set http_proxy=https://127.0.0.0.1:7890
+        set https_proxy=http://127.0.0.0.1:7890
         ```
 
 ### 5. 修改直播地址 
