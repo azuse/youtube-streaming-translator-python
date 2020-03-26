@@ -2,8 +2,8 @@
 > 开发中 v0.01   
 > 测试开发于Python >= 3.6    
 
-本脚本使用[谷歌云语音转文字api](https://cloud.google.com/speech-to-text)与[谷歌云翻译api](https://cloud.google.com/translate)实现对油管直播的实时字幕与翻译。  
-脚本部分功能暂时不能使用代理，请配置全局透明代理或在不需要代理的网络环境下使用。
+本脚本使用[谷歌云语音转文字api](https://cloud.google.com/speech-to-text)与[谷歌云翻译api](https://cloud.google.com/translate)/[百度翻译](https://api.fanyi.baidu.com/)实现对油管直播的实时字幕与翻译。  
+
 ## 使用方法
 ### 0. 克隆本仓库
    
@@ -102,3 +102,5 @@ python main.google.py
 * 使用谷歌API实验性特性<-开了反而转文字质量差了<-解决了
 * 解决代理问题
 * ~~增加百度翻译api~~
+* 增加彩云小译API 增加IBM watson API
+
