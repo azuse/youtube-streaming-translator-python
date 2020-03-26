@@ -5,12 +5,13 @@
 本脚本使用[谷歌云语音转文字api](https://cloud.google.com/speech-to-text)与[谷歌云翻译api](https://cloud.google.com/translate)实现对油管直播的实时字幕与翻译。  
 脚本部分功能暂时不能使用代理，请配置全局透明代理或在不需要代理的网络环境下使用。
 ## 使用方法
-0. 克隆本仓库
+### 克隆本仓库
+
    
-    ```bash
-    git clone github.com/azuse/youtube-streaming-translator-python
-    cd youtube-streaming-translator-python
-    ```
+```bash
+git clone github.com/azuse/youtube-streaming-translator-python
+cd youtube-streaming-translator-python
+```
 
 1. 安装依赖库
    
@@ -47,9 +48,18 @@
 
 4. 修改代理  
    * 不使用代理:
-        请把代码中所有`response = requests.get(play.url, proxies=proxy)`的`, proxies=proxy`删掉
-   * 使用代理:
-        请把代码中所有`proxy = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}` 改为您使用的HTTP代理地址，**同时需要配置透明代理** （推荐[Clash的TAP模式](https://docs.cfw.lbyczf.com/contents/tap.html)）
+        直接运行
+   * 使用代理:  
+        Ubuntu/Linux
+        ```bash
+        export http_proxy=http://127.0.0.1:7890
+        export http2_proxy=http://127.0.0.1:7890
+        ```
+        Windows
+        ```cmd
+        set http_proxy=http://127.0.0.0.1:7890
+        set http_proxy=https://127.0.0.0.1:7890
+        ```
 
 5. 修改直播地址 
     
@@ -73,7 +83,7 @@
    访问`http://127.0.0.1:5000`或`http://你的服务器ip:5000`会打开显示字幕用的网页，网页分别从5001和5002的socket读取日文与中文字幕。
    网页的CSS有待优化，目前只是一个测试效果。
 
-9. *Chunksize
+9.  *Chunksize
     
     油管的直播是以1s左右时间一段.ts文件的格式传输的，在将视频段转为音频后，可以决定要把多少段视频合在一起送给谷歌的流式音频识别API，决定多少段合并在一起的变量叫`chunksize`。  
     

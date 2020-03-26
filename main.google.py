@@ -55,10 +55,8 @@ class DownloadThread(threading.Thread):
         self.videoid = videoid
 
     def run(self):
-        proxy = {"http": "http://127.0.0.1:7890",
-                 "https": "http://127.0.0.1:7890"}
         try:
-            r = requests.get(self.url, proxies=proxy)
+            r = requests.get(self.url)
             self.success_count.value += 1
 
         except:
@@ -242,7 +240,7 @@ class MultiThreadTranslate(threading.Thread):
 
                     # 翻译
                     try:
-                        baidu = False  # 是否使用百度api
+                        baidu = True  # 是否使用百度api
                         if not baidu:
                             result = self.translate_client.translate(
                                 transcript, target_language="zh")
@@ -407,8 +405,7 @@ def multi_process_download(url, complete_history, download_count, success_count,
         print("输入的链接不是直播")
         exit()
 
-    proxy = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
-    response = requests.get(play.url, proxies=proxy)
+    response = requests.get(play.url)
 
     last_m3u8obj = m3u8.loads(response.text)
     last_m3u8obj_index = make_m3u8_index(last_m3u8obj)
@@ -416,10 +413,8 @@ def multi_process_download(url, complete_history, download_count, success_count,
     print("start downloading")
     while 1:
         play = video.streams[max(-3, -len(video.streams))]
-        proxy = {"http": "http://127.0.0.1:7890",
-                 "https": "http://127.0.0.1:7890"}
         try:
-            response = requests.get(play.url, proxies=proxy)
+            response = requests.get(play.url)
         except:
             # print("download m3u8 fail")
             continue
@@ -442,23 +437,11 @@ def multi_process_download(url, complete_history, download_count, success_count,
 
 
 if __name__ == "__main__" and 1:
-    # multi_process_download("https://www.youtube.com/watch?v=0Aen53AMiJo", complete_history, download_count, success_count, fail_count, sem)
-    # os.makedirs("cache")
+    # os.makedirs("cache")  # 要不要清楚缓存
     # clear_cache()
 
-    # create a google translate client
-    # translate_client = translate.Client()
-    # client = speech.SpeechClient()
-    # config = speech.types.RecognitionConfig(
-    #     encoding=speech.enums.RecognitionConfig.AudioEncoding.LINEAR16,
-    #     sample_rate_hertz=44100,
-    #     language_code='ja-JP',
-    #     max_alternatives=1)
-    # streaming_config = speech.types.StreamingRecognitionConfig(
-    #     config=config,
-    #     interim_results=True)
 
-    url = "https://www.youtube.com/watch?v=02n3gqieXXY"
+    url = "https://www.youtube.com/watch?v=E5yj0nP-SAU"
     print("Connecting to youtube...")
     video = pafy.new(url)
     videoid = video.videoid
