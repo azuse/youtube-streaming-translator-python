@@ -1,42 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
     <script src="https://cdn.bootcss.com/jquery/3.2.0/jquery.js"></script>
 </head>
+
 <body>
     <style>
-    textarea{
-        background-color: rgba(255,255,255,0.5)
-    }
+        textarea {
+            background-color: rgba(255, 255, 255, 0.5);
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+        }
+
+        .subcontainer {
+            overflow: hidden;
+            height: 60px;
+            width: 950px;
+
+        }
+
+        .subspan {
+            color: #fff;
+            font-family: Imprima, "Microsoft YaHei";
+            font-size: 18px;
+            line-height: 18px;
+            text-shadow: -2px -2px #000, -2px -1px #000, -2px 0 #000, -2px 1px #000, -2px 2px #000, -1px -2px #000, -1px -1px #000, -1px 0 #000, -1px 1px #000, -1px 2px #000, 0 -2px #000, 0 -1px #000, 0 0 #000, 0 1px #000, 0 2px #000, 1px -2px #000, 1px -1px #000, 1px 0 #000, 1px 1px #000, 1px 2px #000, 2px -2px #000, 2px -1px #000, 2px 0 #000, 2px 1px #000;
+            display: inline-block;
+            height: 25px;
+        }
     </style>
 
-    <textarea name="" id="jp" cols="30" rows="10"></textarea>
-    <textarea name="" id="cn" cols="30" rows="10"></textarea>
+    <div id="jpsub" class="subcontainer">
+    </div>
+
+    <div id="cnsub" class="subcontainer">
+    </div>
+
 
 
     <script>
-            var ws_cn = new WebSocket("ws://"+window.document.domain+":5001/");  
 
-            ws_cn.onmessage = function (event) {
-                content = document.createTextNode(event.data);
-                $("#jp").val($("#jp").val() + content.data);
-                var textarea = document.getElementById('jp');
-                textarea.scrollTop = textarea.scrollHeight;
 
-            };
+        function checkBottom(dom) {
+            handle = setInterval(() => {
+                dom.scrollTop += 5
+            }, 50);
+            return handle
+        }
 
-            var ws_jp = new WebSocket("ws://"+window.document.domain+":5002/");  
+        jpsubHandle = checkBottom($("#jpsub")[0])
+        cnsubHandle = checkBottom($("#cnsub")[0])
 
-            ws_jp.onmessage = function (event) {
-                content = document.createTextNode(event.data);
-                $("#cn").val($("#cn").val() + content.data);
-                var textarea = document.getElementById('cn');
-                textarea.scrollTop = textarea.scrollHeight;
+        function addLine(dom) {
+            line = "<br>"
+            dom.innerHTML += line
+        }
 
-            };
 
+        var ws_cn = new WebSocket("ws://" + window.document.domain + ":5001/");
+
+        var addLine_handle_jp
+        var addLine_handle_cn
+        ws_cn.onmessage = function (event) {
+            // clear handle 不换行了
+            if (addLine_handle_jp != undefined) {
+                clearTimeout(addLine_handle_jp)
+            }
+
+            content = document.createTextNode(event.data);
+
+            $("#jpsub")[0].innerHTML += '<span class="subspan">' + content.data + '</span>'
+
+            // 计时 一段时间不说话->换行
+            addLine_handle_jp = setTimeout(() => {
+                addLine($("#jpsub")[0])
+            }, 1500);
+        };
+
+        var ws_jp = new WebSocket("ws://" + window.document.domain + ":5002/");
+
+        ws_jp.onmessage = function (event) {
+            // clear handle 不换行了
+            if (addLine_handle_cn != undefined) {
+                clearTimeout(addLine_handle_cn)
+            }
+
+            content = document.createTextNode(event.data);
+
+            $("#cnsub")[0].innerHTML += '<span class="subspan">' + content.data + '</span>'
+
+            // 计时 一段时间不说话->换行
+            setTimeout(() => {
+                addLine($("#cnsub")[0])
+            }, 1500);
+        };
     </script>
-    </body>
+</body>
+
 </html>
