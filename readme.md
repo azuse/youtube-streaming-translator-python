@@ -15,12 +15,9 @@
 ### 1. 安装依赖库
    
  ```bash
- sudo apt-get install libsm6 libxrender1 libxext-dev
  pip install -r requirements.txt
  ```
- > 注1：[安装pyaudio报错，需要自己编译安装portaudio：cannot-install-pyaudio-gcc-error](https://stackoverflow.com/questions/20023131/cannot-install-pyaudio-gcc-error)
-
- > 注2：从[noise_reduction](https://github.com/dodiku/noise_reduction)中复制了降噪功能，降噪功能需要安装[SOX](https://sourceforge.net/projects/sox/files/sox/14.4.2/)，不需要使用可以把代码直接注释掉。
+ > 注1：从[noise_reduction](https://github.com/dodiku/noise_reduction)中复制了降噪功能，降噪功能需要安装[SOX](https://sourceforge.net/projects/sox/files/sox/14.4.2/)，不需要使用可以把代码直接注释掉。
 
 ### 2. 添加谷歌api key到Path中  
    
