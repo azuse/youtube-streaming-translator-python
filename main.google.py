@@ -22,7 +22,6 @@ import re
 from moviepy.video.io.ffmpeg_reader import FFMPEG_VideoReader
 from google.cloud import speech_v1p1beta1 as speech
 from google.cloud import translate_v2 as translate
-import pyaudio
 from multiprocessing import Process, Array, Value, Semaphore, Queue
 
 complete_history = Array('i', [0] * 3600 * 24)
