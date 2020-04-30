@@ -91,6 +91,7 @@ python main.google.py
 ![](res/pre.gif)
 
 使用OBS加载浏览器效果(推荐自己优化CSS)
+![](res/pre3s.gif)
 ![](res/pre2.gif)
 
 ## 开发计划
