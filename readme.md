@@ -1,5 +1,4 @@
 # 实时翻译油管直播
-> 开发中 v0.01   
 > 测试开发于Python >= 3.6    
 
 本脚本使用[谷歌云语音转文字api](https://cloud.google.com/speech-to-text)与[谷歌云翻译api](https://cloud.google.com/translate)/[百度翻译](https://api.fanyi.baidu.com/)实现对油管直播的实时字幕与翻译。  
